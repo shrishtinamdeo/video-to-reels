@@ -1,0 +1,13 @@
+yt-dlp
+moviepy
+librosa
+numpy
+opencv-python
+scenedetect
+instagrapi
+google-api-python-client
+tiktok_uploader
+pandas
+requests
+beautifulsoup4
+google_auth_oauthlib
