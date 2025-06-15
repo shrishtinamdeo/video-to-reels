@@ -1,8 +1,10 @@
 import json
 import os
-from downloader import download_video
+import time
+from downloader import download_video, get_youtube_trending_urls
 from processor import extract_audio
-from ai_analyzer import detect_scenes, find_audio_peaks
+from transcriber import transcribe_with_timestamps
+from ai_analyzer import get_ai_highlights   
 from reel_editor import create_reel
 from uploader import upload_to_instagram, upload_to_youtube, upload_to_tiktok
 
@@ -10,25 +12,40 @@ from uploader import upload_to_instagram, upload_to_youtube, upload_to_tiktok
 with open('config/secrets.json') as f:
     secrets = json.load(f)
 
-# Input
-VIDEO_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
 if __name__ == "__main__":
+    print("🌐 Fetching trending YouTube videos...")
+    trending_urls = get_youtube_trending_urls(max_videos=1)
+    
+    if not trending_urls:
+        raise Exception("❌ No trending videos found.")
+
+    VIDEO_URL = trending_urls[0]
+    print(f"📹 Selected trending video: {VIDEO_URL}") 
+    
     print("📥 Downloading video...")
     video_path = download_video(VIDEO_URL)
 
     print("🔊 Extracting audio...")
     audio_path = extract_audio(video_path)
 
-    print("🔍 Detecting scenes...")
-    scenes = detect_scenes(video_path)
+    print("🗣️ Converting audio to text with timestamps...")
+    segments = transcribe_with_timestamps(audio_path)
+    # print("Segments-----", segments)
 
-    if not scenes:
-        print("⚠️ No scenes detected. Using fallback: first 30 seconds.")
-        scenes = [(0, 30)]
+    print("🧠 Asking AI to find highlights...")
+    highlights = get_ai_highlights(segments)
+
+    if not highlights:
+        print("⚠️ AI didn't return valid highlights. Falling back to first 30 seconds.")
+        highlights = [{"start": 0, "end": 30}]
+
+    print("📌 Highlights selected by AI:")
+    for h in highlights:
+        print(f"{h['start']}s - {h['end']}s")
 
     print("✂️ Creating reel...")
-    reel_path = create_reel(video_path, scenes)
+    reel_path = create_reel(video_path, highlights)
+
 
     print("📤 Uploading to platforms...")
 

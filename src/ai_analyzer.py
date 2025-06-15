@@ -1,20 +1,45 @@
-from scenedetect import detect, ContentDetector
-import librosa
+from openai import OpenAI
+import json
+import os
+from dotenv import load_dotenv
 
-# Scene detection
-def detect_scenes(video_path):
+# Load environment variables from .env file
+load_dotenv()
+
+# Initialize the client
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key = os.getenv("OPENROUTER_AI_KEY")
+)
+
+def get_ai_highlights(segments, total_duration=60):
+    example_format = '[{"start": 1.5, "end": 4.2}, {"start": 10.0, "end": 14.3}, ...]'
+
+    # Format the input for GPT
+    prompt = f"""
+You are an AI that identifies the most engaging moments from a video transcript.
+Given the following video transcript with timestamps, select the most interesting segments to make a {total_duration}-second reel.
+Return "ONLY" a JSON list of segments with "start" and "end" times that sum up to ~{total_duration} seconds atmost. Nothing else, no extra messages
+
+Return response referring only this example output format: {example_format}
+
+Segments:
+"""
+    prompt += json.dumps(segments[:30], indent=2)
+
+    response = client.chat.completions.create(
+        model="meta-llama/llama-3-8b-instruct",  # or gpt-4 if available
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
     try:
-        scene_list = detect(video_path, ContentDetector())
-        scenes = [(float(scene[0].get_seconds()), float(scene[1].get_seconds())) for scene in scene_list]
-        return scenes[:5]  # Top 5 scenes
+        content = response.choices[0].message.content.strip()
+        print("This is content---->", content)
+        highlights = json.loads(content)
+        return highlights
     except Exception as e:
-        print(f"⚠️ Scene detection failed: {e}")
+        print(f"❌ Failed to parse AI response: {e}")
         return []
-
-# Audio peak detection
-def find_audio_peaks(audio_path):
-    y, sr = librosa.load(audio_path)
-    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
-    peaks = librosa.util.peak_pick(onset_env, pre_max=20, post_max=20, delta=0.4, wait=10)
-    timestamps = [float(librosa.frames_to_time(p, sr=sr)) for p in peaks]
-    return timestamps

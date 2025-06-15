@@ -11,3 +11,6 @@ pandas
 requests
 beautifulsoup4
 google_auth_oauthlib
+bs4
+openai
+whisper-timestamped
