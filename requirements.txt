@@ -14,3 +14,4 @@ google_auth_oauthlib
 bs4
 openai
 whisper-timestamped
+emoji

@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from downloader import download_video, get_youtube_trending_urls
+from downloader import download_video, get_youtube_trending_urls, get_youtube_trending_top_video
 from processor import extract_audio
 from transcriber import transcribe_with_timestamps
 from ai_analyzer import get_ai_highlights   
@@ -14,12 +14,14 @@ with open('config/secrets.json') as f:
 
 if __name__ == "__main__":
     print("🌐 Fetching trending YouTube videos...")
-    trending_urls = get_youtube_trending_urls(max_videos=1)
-    
+    # trending_urls = get_youtube_trending_urls(max_videos=1)
+    trending_urls = get_youtube_trending_top_video()
+    print("trending_urls---->", trending_urls)
     if not trending_urls:
         raise Exception("❌ No trending videos found.")
 
-    VIDEO_URL = trending_urls[0]
+    # VIDEO_URL = trending_urls[0]
+    VIDEO_URL = trending_urls['url']
     print(f"📹 Selected trending video: {VIDEO_URL}") 
     
     print("📥 Downloading video...")
@@ -33,18 +35,25 @@ if __name__ == "__main__":
     # print("Segments-----", segments)
 
     print("🧠 Asking AI to find highlights...")
-    highlights = get_ai_highlights(segments)
+    highlights, caption = get_ai_highlights(segments)
 
-    if not highlights:
+    if not isinstance(highlights, list) or len(highlights) == 0:
         print("⚠️ AI didn't return valid highlights. Falling back to first 30 seconds.")
         highlights = [{"start": 0, "end": 30}]
+        caption = "Trending Reel"
 
-    print("📌 Highlights selected by AI:")
-    for h in highlights:
-        print(f"{h['start']}s - {h['end']}s")
+    # Convert dict list to tuple list
+    try:
+        highlight_segments = [(float(seg['start']), float(seg['end'])) for seg in highlights]
+    except (KeyError, TypeError, ValueError) as e:
+        print(f"❌ Error extracting segment times: {e}")
+        highlight_segments = [(0.0, 30.0)]
+
+    print(f"📌 Highlights selected by AI: {highlight_segments}")
+    print(f"📝 Caption: {caption}")
 
     print("✂️ Creating reel...")
-    reel_path = create_reel(video_path, highlights)
+    reel_path = create_reel(video_path, highlight_segments, caption=caption)
 
 
     print("📤 Uploading to platforms...")

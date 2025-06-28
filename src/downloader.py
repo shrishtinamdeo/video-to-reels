@@ -1,4 +1,5 @@
 import yt_dlp
+import subprocess
 import os
 from bs4 import BeautifulSoup
 import requests
@@ -21,6 +22,59 @@ def download_video(url, output_dir="input/raw_videos"):
         video_path = ydl.prepare_filename(info)
         return video_path
 
+def get_youtube_trending_top_video():
+    """
+    Fetches the top trending YouTube video using yt-dlp.
+    Returns title, url, views, and channel.
+    """
+    try:
+        print("🌐 Fetching trending videos via yt-dlp...")
+        # Run yt-dlp command to fetch trending feed
+        result = subprocess.run(
+            ["yt-dlp", "--flat-playlist", "--dump-json", "https://www.youtube.com/feed/trending"], 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+
+        if not result.stdout.strip():
+            raise ValueError("Empty output from yt-dlp")
+
+        # Parse output line by line (each line is a separate JSON object)
+        videos = []
+        for line in result.stdout.strip().split('\n'):
+            try:
+                video_info = json.loads(line)
+                if 'url' in video_info:
+                    videos.append(video_info)
+            except json.JSONDecodeError as e:
+                continue  # Skip invalid lines
+
+        if videos:
+            top_video = videos[1]
+            title = top_video.get('title', 'No Title')
+            url = top_video.get('url', '')
+            view_count = top_video.get('view_count', 'N/A')
+            channel = top_video.get('channel', 'Unknown')
+
+            print(f"✅ Top trending video: {title} | Views: {view_count} | Channel: {channel}")
+            return {
+                'title': title,
+                'url': url,
+                'views': view_count,
+                'channel': channel
+            }
+        else:
+            print("❌ No trending videos found.")
+            return {}
+
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Command failed with error: {e.stderr}")
+        return {}
+    except Exception as e:
+        print(f"⚠️ Unexpected error: {e}")
+        return {}
 
 def get_youtube_trending_urls(max_videos=1):
     """
