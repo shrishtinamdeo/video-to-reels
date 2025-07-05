@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Reel Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .card-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .card-content {
+            padding: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 40px;
+        }
+
+        .input-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            color: #667eea;
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .file-upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .trending-info {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .trending-info h3 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .progress-section {
+            margin: 30px 0;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .progress-step.completed {
+            background: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        .step-icon.pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .step-icon.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .step-icon.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .result-section {
+            margin-top: 40px;
+        }
+
+        .video-preview {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            display: block;
+        }
+
+        .segments-preview {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .segment-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .segment-time {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .segment-text {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .highlights-preview {
+            background: linear-gradient(135deg, #ffd93d 0%, #ff6b6b 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .highlight-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .upload-options {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .platform-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .platform-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .platform-icon {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .instagram { color: #e4405f; }
+        .tiktok { color: #000000; }
+        .youtube { color: #ff0000; }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.1);
+            color: #155724;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+
+        .alert-error {
+            background: rgba(220, 53, 69, 0.1);
+            color: #721c24;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        .alert-info {
+            background: rgba(102, 126, 234, 0.1);
+            color: #0c5460;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card-content {
+                padding: 20px;
+            }
+            
+            .input-tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-magic"></i> AI Reel Generator</h1>
+            <p>Transform any video into engaging short-form content with AI</p>
+        </div>
+
+        <div class="main-card">
+            <div class="card-header">
+                <h2>Create Your Reel</h2>
+                <p>Upload a video, paste a URL, or use trending content</p>
+            </div>
+
+            <div class="card-content">
+                <div class="input-section">
+                    <div class="input-tabs">
+                        <div class="tab active" onclick="switchTab('file')">
+                            <i class="fas fa-upload"></i> Upload File
+                        </div>
+                        <div class="tab" onclick="switchTab('url')">
+                            <i class="fas fa-link"></i> Video URL
+                        </div>
+                        <div class="tab" onclick="switchTab('trending')">
+                            <i class="fas fa-fire"></i> Trending
+                        </div>
+                    </div>
+
+                    <div id="file-tab" class="tab-content active">
+                        <div class="file-upload-area" onclick="document.getElementById('file-input').click()" 
+                             ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h3>Drop your video here or click to browse</h3>
+                            <p>Supports MP4, AVI, MOV, MKV, WEBM (Max 500MB)</p>
+                            <input type="file" id="file-input" accept="video/*" style="display: none;" onchange="handleFileSelect(event)">
+                        </div>
+                    </div>
+
+                    <div id="url-tab" class="tab-content">
+                        <input type="url" id="url-input" class="url-input" placeholder="Paste YouTube, TikTok, or any video URL here...">
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn" onclick="processVideo('url')">
+                                <i class="fas fa-play"></i> Process Video
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="trending-tab" class="tab-content">
+                        <div class="trending-info">
+                            <h3><i class="fas fa-fire"></i> Trending YouTube Video</h3>
+                            <p>We'll automatically fetch the most popular trending video and create a reel from it.</p>
+                            <div style="margin-top: 20px;">
+                                <button class="btn" onclick="processVideo('trending')">
+                                    <i class="fas fa-magic"></i> Generate from Trending
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="progress-section" class="progress-section" style="display: none;">
+                    <h3>Processing Your Video</h3>
+                    
+                    <div id="step-1" class="progress-step">
+                        <div class="step-icon pending">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Downloading Video</div>
+                            <div class="step-description">Fetching video content...</div>
+                        </div>
+                    </div>
+
+                    <div id="step-2" class="progress-step">
+                        <div class="step-icon pending">
+                            <i class="fas fa-volume-up"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Extracting Audio</div>
+                            <div class="step-description">Converting video to audio...</div>
+                        </div>
+                    </div>
+
+                    <div id="step-3" class="progress-step">
+                        <div class="step-icon pending">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Transcribing Audio</div>
+                            <div class="step-description">Converting speech to text with timestamps...</div>
+                        </div>
+                    </div>
+
+                    <div id="step-4" class="progress-step">
+                        <div class="step-icon pending">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">AI Analysis</div>
+                            <div class="step-description">Finding the most engaging moments...</div>
+                        </div>
+                    </div>
+
+                    <div id="step-5" class="progress-step">
+                        <div class="step-icon pending">
+                            <i class="fas fa-cut"></i>
+                        </div>
+                        <div class="step-content">
+                            <div class="step-title">Creating Reel</div>
+                            <div class="step-description">Generating your 30-second reel...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="result-section" class="result-section" style="display: none;">
+                    <h3>Your Reel is Ready! 🎉</h3>
+                    
+                    <div style="text-align: center; margin: 20px 0;">
+                        <video id="reel-preview" class="video-preview" controls>
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                    <div style="text-align: center; margin: 20px 0;">
+                        <button class="btn btn-success" onclick="downloadReel()">
+                            <i class="fas fa-download"></i> Download Reel
+                        </button>
+                    </div>
+
+                    <div id="segments-preview" class="segments-preview">
+                        <h4><i class="fas fa-list"></i> Video Segments</h4>
+                        <div id="segments-content"></div>
+                    </div>
+
+                    <div id="highlights-preview" class="highlights-preview">
+                        <h4><i class="fas fa-star"></i> AI Selected Highlights</h4>
+                        <div id="highlights-content"></div>
+                    </div>
+
+                    <div class="upload-options">
+                        <h4><i class="fas fa-share"></i> Share to Social Media</h4>
+                        <div class="platform-checkbox">
+                            <input type="checkbox" id="instagram" value="instagram">
+                            <i class="fab fa-instagram platform-icon instagram"></i>
+                            <label for="instagram">Instagram</label>
+                        </div>
+                        <div class="platform-checkbox">
+                            <input type="checkbox" id="tiktok" value="tiktok">
+                            <i class="fab fa-tiktok platform-icon tiktok"></i>
+                            <label for="tiktok">TikTok</label>
+                        </div>
+                        <div class="platform-checkbox">
+                            <input type="checkbox" id="youtube" value="youtube">
+                            <i class="fab fa-youtube platform-icon youtube"></i>
+                            <label for="youtube">YouTube</label>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-secondary" onclick="uploadToPlatforms()">
+                                <i class="fas fa-upload"></i> Upload Selected Platforms
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let currentReelPath = null;
+        let currentCaption = null;
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            
+            // Fetch trending video only when trending tab is clicked
+            if (tabName === 'trending') {
+                fetchTrendingVideo();
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processVideo('file', file);
+            }
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) {
+                processVideo('file', file);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.target.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.target.classList.remove('dragover');
+        }
+
+        async function processVideo(source, file = null) {
+            try {
+                // Show progress section
+                document.getElementById('progress-section').style.display = 'block';
+                document.getElementById('result-section').style.display = 'none';
+                
+                // Reset progress steps
+                for (let i = 1; i <= 5; i++) {
+                    const step = document.getElementById(`step-${i}`);
+                    step.className = 'progress-step';
+                    step.querySelector('.step-icon').className = 'step-icon pending';
+                }
+
+                let requestOptions = {};
+
+                if (source === 'file' && file) {
+                    // Handle file upload with FormData
+                    let formData = new FormData();
+                    formData.append('source', source);
+                    formData.append('file', file);
+                    
+                    requestOptions = {
+                        method: 'POST',
+                        body: formData
+                    };
+                } else {
+                    // Handle URL and trending with JSON
+                    const requestBody = {
+                        source: source
+                    };
+                    
+                    if (source === 'url') {
+                        const url = document.getElementById('url-input').value;
+                        if (!url) {
+                            showAlert('Please enter a video URL', 'error');
+                            return;
+                        }
+                        requestBody.url = url;
+                    }
+                    
+                    requestOptions = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    };
+                }
+
+                // Step 1: Downloading
+                updateProgress(1, 'active');
+                
+                // Add timeout and better error handling
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+                
+                try {
+                    const response = await fetch('/api/process', {
+                        ...requestOptions,
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        if (response.status === 413) {
+                            throw new Error('File too large. Please use a smaller video file.');
+                        } else if (response.status === 415) {
+                            throw new Error('Invalid file type. Please use MP4, AVI, MOV, MKV, or WEBM.');
+                        } else {
+                            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                        }
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Unknown error occurred');
+                    }
+
+                    // Update progress through all steps
+                    for (let i = 1; i <= 5; i++) {
+                        updateProgress(i, 'completed');
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+
+                    // Store results
+                    currentSessionId = result.data.session_id;
+                    currentReelPath = result.data.reel_path;
+                    currentCaption = result.data.caption;
+
+                    // Display results
+                    displayResults(result.data);
+                    
+                    showAlert('Reel generated successfully!', 'success');
+
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('Request timed out. Please try again with a shorter video.');
+                    }
+                    throw fetchError;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error processing video: ' + error.message, 'error');
+                document.getElementById('progress-section').style.display = 'none';
+            }
+        }
+
+        function updateProgress(stepNumber, status) {
+            const step = document.getElementById(`step-${stepNumber}`);
+            const icon = step.querySelector('.step-icon');
+            
+            step.className = `progress-step ${status}`;
+            icon.className = `step-icon ${status}`;
+        }
+
+        function displayResults(data) {
+            // Show result section
+            document.getElementById('result-section').style.display = 'block';
+            
+            // Set video preview
+            const videoPreview = document.getElementById('reel-preview');
+            videoPreview.src = `/api/download/${data.session_id}/${data.reel_filename}`;
+            
+            // Display segments
+            const segmentsContent = document.getElementById('segments-content');
+            segmentsContent.innerHTML = '';
+            data.segments.forEach(segment => {
+                const segmentDiv = document.createElement('div');
+                segmentDiv.className = 'segment-item';
+                segmentDiv.innerHTML = `
+                    <div class="segment-time">${formatTime(segment.start)} - ${formatTime(segment.end)}</div>
+                    <div class="segment-text">${segment.text}</div>
+                `;
+                segmentsContent.appendChild(segmentDiv);
+            });
+            
+            // Display highlights
+            const highlightsContent = document.getElementById('highlights-content');
+            highlightsContent.innerHTML = '';
+            data.highlights.forEach(highlight => {
+                const highlightDiv = document.createElement('div');
+                highlightDiv.className = 'highlight-item';
+                highlightDiv.innerHTML = `
+                    <strong>${formatTime(highlight.start)} - ${formatTime(highlight.end)}</strong>
+                `;
+                highlightsContent.appendChild(highlightDiv);
+            });
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function downloadReel() {
+            if (currentSessionId && currentReelPath) {
+                const link = document.createElement('a');
+                link.href = `/api/download/${currentSessionId}/reel_${currentSessionId}.mp4`;
+                link.download = 'generated_reel.mp4';
+                link.click();
+            }
+        }
+
+        async function uploadToPlatforms() {
+            const platforms = [];
+            if (document.getElementById('instagram').checked) platforms.push('instagram');
+            if (document.getElementById('tiktok').checked) platforms.push('tiktok');
+            if (document.getElementById('youtube').checked) platforms.push('youtube');
+            
+            if (platforms.length === 0) {
+                showAlert('Please select at least one platform', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reel_path: currentReelPath,
+                        caption: currentCaption,
+                        platforms: platforms
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    let message = 'Upload results:\n';
+                    Object.entries(result.results).forEach(([platform, status]) => {
+                        message += `${platform}: ${status.success ? 'Success' : 'Failed'}\n`;
+                    });
+                    showAlert(message, 'success');
+                } else {
+                    showAlert('Upload failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Upload error: ' + error.message, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = message;
+            
+            document.querySelector('.card-content').insertBefore(alert, document.querySelector('.card-content').firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Function to fetch trending video when trending tab is clicked
+        async function fetchTrendingVideo() {
+            try {
+                const response = await fetch('/api/trending');
+                const result = await response.json();
+                if (result.success) {
+                    const trendingInfo = document.querySelector('.trending-info');
+                    trendingInfo.innerHTML = `
+                        <h3><i class="fas fa-fire"></i> Trending: ${result.data.title}</h3>
+                        <p>Channel: ${result.data.channel} | Views: ${result.data.views}</p>
+                        <div style="margin-top: 20px;">
+                            <button class="btn" onclick="processVideo('trending')">
+                                <i class="fas fa-magic"></i> Generate from Trending
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    const trendingInfo = document.querySelector('.trending-info');
+                    trendingInfo.innerHTML = `
+                        <h3><i class="fas fa-fire"></i> Trending YouTube Video</h3>
+                        <p>Failed to fetch trending video. Please try again.</p>
+                        <div style="margin-top: 20px;">
+                            <button class="btn" onclick="fetchTrendingVideo()">
+                                <i class="fas fa-refresh"></i> Retry
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to fetch trending video:', error);
+                const trendingInfo = document.querySelector('.trending-info');
+                trendingInfo.innerHTML = `
+                    <h3><i class="fas fa-fire"></i> Trending YouTube Video</h3>
+                    <p>Failed to fetch trending video. Please try again.</p>
+                    <div style="margin-top: 20px;">
+                        <button class="btn" onclick="fetchTrendingVideo()">
+                            <i class="fas fa-refresh"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize trending video info on page load
+        window.addEventListener('load', async () => {
+            // Don't fetch trending videos automatically - only when user clicks trending tab
+            console.log('AI Video Reel Generator loaded successfully!');
+        });
+    </script>
+</body>
+</html> 

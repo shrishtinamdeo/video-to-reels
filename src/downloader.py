@@ -52,7 +52,7 @@ def get_youtube_trending_top_video():
                 continue  # Skip invalid lines
 
         if videos:
-            top_video = videos[1]
+            top_video = videos[0]
             title = top_video.get('title', 'No Title')
             url = top_video.get('url', '')
             view_count = top_video.get('view_count', 'N/A')

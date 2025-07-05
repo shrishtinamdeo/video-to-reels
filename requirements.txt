@@ -15,3 +15,7 @@ bs4
 openai
 whisper-timestamped
 emoji
+flask
+flask-cors
+python-dotenv
+werkzeug
