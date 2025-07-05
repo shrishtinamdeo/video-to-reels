@@ -60,7 +60,7 @@ def get_ai_highlights(segments, total_duration=60):
         content = response.choices[0].message.content.strip()
         print("✅ Raw AI Response:\n", content)
 
-        # Find JSON manually without relying on advanced regex
+        # Find JSON manually
         start_idx = content.find('{')
         end_idx = content.rfind('}') + 1
 
@@ -69,22 +69,20 @@ def get_ai_highlights(segments, total_duration=60):
 
         json_str = content[start_idx:end_idx]
 
-        # # Fix invalid Unicode escapes (like \u0ba4)
-        json_str = re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: bytes.fromhex(m.group(1).decode('utf-8')).decode('utf-8', errors='ignore'), json_str.encode().decode('unicode_escape'))
-        # json_str = re.sub(r'\\u([0-9a-fA-F]{4})', '', json_str)  # Remove invalid Unicode
-
+        # Remove trailing commas before } or ]
+        json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+        # Remove control characters
+        json_str = re.sub(r'[\x00-\x1F\x7F]', '', json_str)
         # Fix malformed floats like 14.300000000000001 → 14.3
         json_str = re.sub(r'(\d+\.\d+?)0+(?=\s*[,$])', r'\1', json_str)
+        # Remove invalid unicode escapes
+        json_str = re.sub(r'\\u[0-9a-fA-F]{4}', '', json_str)
 
-        # # Remove control characters
-        json_str = re.sub(r'[\x00-\x1F\x7F]', '', json_str)
-
-        result = json.loads(json_str)
-
-        # for seg in highlights:
-        #     if not isinstance(seg, dict) or 'start' not in seg or 'end' not in seg:
-        #         print("❌ Invalid segment structure:", seg)
-        #         return [], ""
+        try:
+            result = json.loads(json_str)
+        except Exception as e:
+            print(f"❌ JSON decode error: {e}\nRaw string: {json_str}")
+            return [], "(AI parsing error: could not extract highlights)"
 
         highlights = result.get("segments", [])
         caption = result.get("caption", "")

@@ -809,33 +809,143 @@
                 return;
             }
 
+            // Use SSE for real-time per-platform upload toasts
             try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
+                let uploadDone = false;
+                let reportedPlatforms = new Set();
+                const eventSource = new EventSourcePolyfill('/api/upload/stream', {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
+                    payload: JSON.stringify({
                         reel_path: currentReelPath,
                         caption: currentCaption,
                         platforms: platforms
-                    })
+                    }),
+                    method: 'POST'
                 });
 
-                const result = await response.json();
-                
-                if (result.success) {
-                    let message = 'Upload results:\n';
-                    Object.entries(result.results).forEach(([platform, status]) => {
-                        message += `${platform}: ${status.success ? 'Success' : 'Failed'}\n`;
-                    });
-                    showAlert(message, 'success');
-                } else {
-                    showAlert('Upload failed: ' + result.error, 'error');
-                }
+                eventSource.addEventListener('upload', function(event) {
+                    const data = JSON.parse(event.data);
+                    reportedPlatforms.add(data.platform);
+                    if (data.success) {
+                        showToast(`Successfully uploaded to ${capitalize(data.platform)}`, 'success');
+                    } else {
+                        showToast(`Failed to upload to ${capitalize(data.platform)}: ${data.error || 'Unknown error'}`, 'error');
+                    }
+                });
+
+                eventSource.addEventListener('done', function(event) {
+                    uploadDone = true;
+                    // If no platforms were reported, show a generic error
+                    if (reportedPlatforms.size === 0) {
+                        showToast('Upload error: No response from server.', 'error');
+                    }
+                    eventSource.close();
+                });
+
+                eventSource.addEventListener('error', function(event) {
+                    if (!uploadDone && reportedPlatforms.size === 0) {
+                        showToast('Upload error: ' + (event.data || 'Unknown error'), 'error');
+                    }
+                    // Only close if not already closed
+                    if (!eventSource._closed) {
+                        eventSource.close();
+                    }
+                });
             } catch (error) {
-                showAlert('Upload error: ' + error.message, 'error');
+                showToast('Upload error: ' + error.message, 'error');
             }
+        }
+
+        // Polyfill for EventSource with POST support (for SSE with POST)
+        // Uses fetch and ReadableStream for compatibility
+        class EventSourcePolyfill {
+            constructor(url, options) {
+                this.url = url;
+                this.options = options || {};
+                this.controller = new AbortController();
+                this.listeners = {};
+                this._closed = false;
+                this._connect();
+            }
+            _connect() {
+                fetch(this.url, {
+                    method: this.options.method || 'GET',
+                    headers: this.options.headers || {},
+                    body: this.options.payload || undefined,
+                    signal: this.controller.signal,
+                }).then(response => {
+                    if (!response.body) throw new Error('No response body');
+                    const reader = response.body.getReader();
+                    let buffer = '';
+                    const read = () => {
+                        reader.read().then(({done, value}) => {
+                            if (done) return;
+                            buffer += new TextDecoder().decode(value);
+                            let lines = buffer.split(/\r?\n/);
+                            buffer = lines.pop();
+                            let event = {event: 'message', data: ''};
+                            for (let line of lines) {
+                                if (line.startsWith('event:')) {
+                                    event.event = line.replace('event:', '').trim();
+                                } else if (line.startsWith('data:')) {
+                                    event.data += line.replace('data:', '').trim();
+                                } else if (line === '') {
+                                    if (event.data) {
+                                        this._emit(event.event, event);
+                                    }
+                                    event = {event: 'message', data: ''};
+                                }
+                            }
+                            read();
+                        });
+                    };
+                    read();
+                }).catch(err => {
+                    this._emit('error', {data: err.message});
+                });
+            }
+            addEventListener(type, callback) {
+                if (!this.listeners[type]) this.listeners[type] = [];
+                this.listeners[type].push(callback);
+            }
+            close() {
+                if (this._closed) return;
+                this._closed = true;
+                this.controller.abort();
+            }
+            _emit(type, event) {
+                (this.listeners[type] || []).forEach(cb => cb(event));
+            }
+        }
+
+        function showToast(message, type) {
+            // Create toast container if not exists
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.position = 'fixed';
+                container.style.top = '30px';
+                container.style.right = '30px';
+                container.style.zIndex = 9999;
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type}`;
+            toast.style.minWidth = '220px';
+            toast.style.marginBottom = '10px';
+            toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 3500);
+        }
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
         function showAlert(message, type) {

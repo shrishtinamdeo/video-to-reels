@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file, render_template, Response
 from flask_cors import CORS
 import os
 import json
@@ -7,6 +7,9 @@ import shutil
 from werkzeug.utils import secure_filename
 import uuid
 import traceback
+import time
+import threading
+import queue
 
 # Import your existing modules
 from src.downloader import download_video, get_youtube_trending_top_video
@@ -109,6 +112,7 @@ def process_video():
                 trending = get_youtube_trending_top_video()
                 if not trending:
                     return jsonify({'success': False, 'error': 'No trending videos found'})
+                
                 print("trending------>", trending['url'])
                 video_path = download_video(trending['url'], session_folder)
             else:
@@ -119,8 +123,20 @@ def process_video():
             print(traceback.format_exc())
             return jsonify({'success': False, 'error': f'Failed to acquire video: {str(e)}'})
         
+        # Wait for file to be fully written and accessible
         if not video_path or not os.path.exists(video_path):
             return jsonify({'success': False, 'error': 'Failed to get video file'})
+        
+        # Add a small delay to ensure file is fully written
+        time.sleep(2)
+        
+        # Double-check file exists and is accessible
+        for _ in range(5):
+            if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
+                break
+            time.sleep(1)
+        else:
+            return jsonify({'success': False, 'error': 'Downloaded file not found or not accessible'})
         
         # Process the video
         try:
@@ -194,52 +210,58 @@ def download_reel(session_id, filename):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/upload', methods=['POST'])
-def upload_to_platforms():
-    """Upload reel to social media platforms"""
-    try:
-        data = request.get_json()
-        reel_path = data.get('reel_path')
-        caption = data.get('caption', 'Generated using AI!')
-        platforms = data.get('platforms', [])
-        
-        results = {}
-        
-        # Load secrets
+def sse_format(data, event=None):
+    """Format data as SSE event."""
+    msg = ''
+    if event:
+        msg += f'event: {event}\n'
+    msg += f'data: {json.dumps(data)}\n\n'
+    return msg
+
+@app.route('/api/upload/stream', methods=['POST'])
+def upload_to_platforms_stream():
+    data = request.get_json()
+    reel_path = data.get('reel_path')
+    caption = data.get('caption', 'Generated using AI!')
+    platforms = data.get('platforms', [])
+    def generate():
         try:
-            with open('config/secrets.json') as f:
-                secrets = json.load(f)
-        except:
-            secrets = {}
-        
-        # Upload to selected platforms
-        for platform in platforms:
+            # Load secrets
             try:
-                if platform == 'instagram' and 'instagram' in secrets:
-                    from src.uploader import upload_to_instagram
-                    ig_secrets = secrets["instagram"]
-                    upload_to_instagram(reel_path, caption, ig_secrets["username"], ig_secrets["password"])
-                    results[platform] = {'success': True, 'message': 'Uploaded to Instagram'}
-                    
-                elif platform == 'tiktok' and 'tiktok' in secrets:
-                    from src.uploader import upload_to_tiktok
-                    tiktok_secrets = secrets["tiktok"]
-                    upload_to_tiktok(reel_path, caption, tiktok_secrets["sessionid"])
-                    results[platform] = {'success': True, 'message': 'Uploaded to TikTok'}
-                    
-                elif platform == 'youtube':
-                    from src.uploader import upload_to_youtube
-                    yt_secrets_path = "config/youtube_secrets.json"
-                    upload_to_youtube(reel_path, caption, "Generated using AI from trending YouTube content.", yt_secrets_path)
-                    results[platform] = {'success': True, 'message': 'Uploaded to YouTube'}
-                    
-            except Exception as e:
-                results[platform] = {'success': False, 'error': str(e)}
-        
-        return jsonify({'success': True, 'results': results})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+                with open('config/secrets.json') as f:
+                    secrets = json.load(f)
+            except:
+                secrets = {}
+            for platform in platforms:
+                try:
+                    if platform == 'instagram' and 'instagram' in secrets:
+                        from src.uploader import upload_to_instagram
+                        ig_secrets = secrets["instagram"]
+                        upload_to_instagram(reel_path, caption, ig_secrets["username"], ig_secrets["password"])
+                        yield sse_format({'platform': 'instagram', 'success': True, 'message': 'Uploaded to Instagram'}, event='upload')
+                    elif platform == 'tiktok' and 'tiktok' in secrets:
+                        from src.uploader import upload_to_tiktok
+                        tiktok_secrets = secrets["tiktok"]
+                        upload_to_tiktok(reel_path, caption, tiktok_secrets["sessionid"])
+                        yield sse_format({'platform': 'tiktok', 'success': True, 'message': 'Uploaded to TikTok'}, event='upload')
+                    elif platform == 'youtube':
+                        from src.uploader import upload_to_youtube
+                        yt_secrets_path = "config/youtube_secrets.json"
+                        upload_to_youtube(reel_path, caption, "Generated using AI from trending YouTube content.", yt_secrets_path)
+                        yield sse_format({'platform': 'youtube', 'success': True, 'message': 'Uploaded to YouTube'}, event='upload')
+                    else:
+                        yield sse_format({'platform': platform, 'success': False, 'error': 'Credentials not found'}, event='upload')
+                except Exception as e:
+                    yield sse_format({'platform': platform, 'success': False, 'error': str(e)}, event='upload')
+            # Signal completion
+            yield sse_format({'done': True}, event='done')
+            import sys, time
+            sys.stdout.flush()
+            time.sleep(0.5)  # Ensure client receives the last event
+        except Exception as e:
+            yield sse_format({'success': False, 'error': str(e)}, event='error')
+    return Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    # Disable auto-reload to prevent connection reset issues during video processing
+    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000) 
