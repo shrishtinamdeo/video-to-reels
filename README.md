@@ -2,6 +2,10 @@
 
 An intelligent web application that automatically generates short video reels from trending YouTube videos using AI. The system downloads trending videos, extracts audio, transcribes speech with timestamps, uses AI to find highlights, creates engaging reels, and uploads them to social media platforms.
 
+![AI Video Reel Generator](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)
+![AI Powered](https://img.shields.io/badge/AI-Powered-orange.svg)
+![Multi-Platform](https://img.shields.io/badge/Multi--Platform-Upload-red.svg)
 ## ✨ Features
 
 ### 🎥 Video Processing
